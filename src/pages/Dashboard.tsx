@@ -476,7 +476,11 @@ const Dashboard = () => {
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {createdClasses.map((classItem) => (
-                  <Card key={classItem.id} className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                  <Card 
+                    key={classItem.id} 
+                    className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => navigate(`/class/${classItem.id}`)}
+                  >
                     <div className="space-y-4">
                       <div>
                         <h3 className="text-lg font-semibold">{classItem.name}</h3>
@@ -555,7 +559,11 @@ const Dashboard = () => {
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {joinedClasses.map((membership) => (
-                  <Card key={membership.id} className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                  <Card 
+                    key={membership.id} 
+                    className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => navigate(`/class/${membership.classes.id}`)}
+                  >
                     <div className="space-y-4">
                       <div>
                         <h3 className="text-lg font-semibold">{membership.classes.name}</h3>

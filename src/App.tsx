@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import LandingPage from './pages/LandingPage';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
+import ClassDetail from './pages/ClassDetail';
 import TakeAssignment from './pages/TakeAssignment';
 import Assessment from './pages/Assessment';
 import Profile from './pages/Profile';
@@ -18,7 +19,9 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/class/:classId" element={<ClassDetail />} />
           <Route path="/assignment/:shareLink" element={<TakeAssignment />} />
+          <Route path="/assignment/:shareLink/results" element={<TakeAssignment />} />
           <Route path="/join/:inviteLink" element={<Dashboard />} />
           <Route path="/assessment" element={<Assessment />} />
           <Route path="/profile" element={<Profile />} />

@@ -15,43 +15,18 @@ import { useToast } from '@/hooks/use-toast';
 
 interface Question {
   id: string;
-  type: 'multiple_choice' | 'short_answer' | 'essay';
+  type: 'multiple_choice' | 'short_answer' | 'essay' | 'true_false';
   question: string;
   options?: string[];
+  correctAnswer?: string;
+  explanation?: string;
   points: number;
 }
 
 const TakeAssignment = () => {
   const { shareLink } = useParams();
   const [assignment, setAssignment] = useState<any>(null);
-  const [questions] = useState<Question[]>([
-    // Sample questions - these would come from AI generation
-    {
-      id: '1',
-      type: 'multiple_choice',
-      question: 'What are the main stages of the water cycle?',
-      options: [
-        'Evaporation, Condensation, Precipitation',
-        'Heating, Cooling, Freezing',
-        'Collection, Distribution, Storage',
-        'Formation, Movement, Deposition'
-      ],
-      points: 10
-    },
-    {
-      id: '2',
-      type: 'short_answer',
-      question: 'Explain how evaporation occurs in the water cycle.',
-      points: 15
-    },
-    {
-      id: '3',
-      type: 'essay',
-      question: 'Discuss the importance of the water cycle in maintaining Earth\'s climate and supporting life. Provide specific examples.',
-      points: 25
-    }
-  ]);
-  
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<{[key: string]: string}>({});
   const [learnerName, setLearnerName] = useState('');
@@ -88,6 +63,22 @@ const TakeAssignment = () => {
     }
 
     setAssignment(data);
+    
+    // Set questions from assignment data
+    if (data.questions && Array.isArray(data.questions)) {
+      const formattedQuestions: Question[] = data.questions.map((q: any) => ({
+        id: q.id.toString(),
+        type: q.type === 'multiple-choice' ? 'multiple_choice' : 
+              q.type === 'true-false' ? 'true_false' :
+              q.type === 'short-answer' ? 'short_answer' : 'essay',
+        question: q.question,
+        options: q.options || [],
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation,
+        points: q.points || 10
+      }));
+      setQuestions(formattedQuestions);
+    }
   };
 
   const handleAnswerChange = (questionId: string, answer: string) => {
@@ -126,44 +117,80 @@ const TakeAssignment = () => {
     setIsSubmitting(true);
 
     try {
-      // Calculate basic score (this would be enhanced with AI evaluation)
-      const totalPossiblePoints = questions.reduce((sum, q) => sum + q.points, 0);
-      const answeredQuestions = questions.filter(q => answers[q.id]);
-      const basicScore = Math.round((answeredQuestions.length / questions.length) * totalPossiblePoints);
+      // Create submission first
+      const submissionData = {
+        assignment_id: assignment.id,
+        learner_name: learnerName,
+        answers: Object.entries(answers).map(([questionId, answer]) => ({
+          questionId,
+          answer,
+          question: questions.find(q => q.id === questionId)?.question
+        })),
+        ai_feedback: [],
+        total_score: 0,
+        max_score: questions.reduce((sum, q) => sum + q.points, 0)
+      };
 
-      // Create submission
-      const { data: submissionData, error } = await supabase
+      const { data: submission, error } = await supabase
         .from('assessment_submissions')
-        .insert({
-          assignment_id: assignment.id,
-          learner_name: learnerName,
-          answers: Object.entries(answers).map(([questionId, answer]) => ({
-            questionId,
-            answer,
-            question: questions.find(q => q.id === questionId)?.question
-          })),
-          ai_feedback: [], // Will be populated by AI evaluation
-          total_score: basicScore,
-          max_score: totalPossiblePoints
-        })
+        .insert(submissionData)
         .select()
         .single();
 
       if (error) throw error;
 
+      // Get AI evaluation
+      toast({
+        title: "Evaluating...",
+        description: "AI is analyzing your responses",
+      });
+
+      const evaluationResponse = await supabase.functions.invoke('evaluate-assignment', {
+        body: {
+          submissionId: submission.id,
+          questions: questions,
+          answers: Object.entries(answers).map(([questionId, answer]) => ({
+            questionId: parseInt(questionId),
+            answer,
+            question: questions.find(q => q.id === questionId)?.question,
+            correctAnswer: questions.find(q => q.id === questionId)?.correctAnswer,
+            options: questions.find(q => q.id === questionId)?.options
+          }))
+        }
+      });
+
+      if (evaluationResponse.error) {
+        console.error('Evaluation error:', evaluationResponse.error);
+        // Continue with basic scoring if AI evaluation fails
+      }
+
+      const evaluationData = evaluationResponse.data || {};
+      const finalScore = evaluationData.totalScore || 0;
+      const feedback = evaluationData.feedback || [];
+
+      // Update submission with AI results
+      await supabase
+        .from('assessment_submissions')
+        .update({
+          total_score: finalScore,
+          ai_feedback: feedback
+        })
+        .eq('id', submission.id);
+
       // Show results
       setResults({
-        score: basicScore,
-        maxScore: totalPossiblePoints,
-        percentage: Math.round((basicScore / totalPossiblePoints) * 100),
-        timeSpent: Math.round((new Date().getTime() - timeStarted.getTime()) / 1000 / 60)
+        score: finalScore,
+        maxScore: submissionData.max_score,
+        percentage: Math.round((finalScore / submissionData.max_score) * 100),
+        timeSpent: Math.round((new Date().getTime() - timeStarted.getTime()) / 1000 / 60),
+        feedback
       });
       
       setIsCompleted(true);
 
       toast({
-        title: "Assessment Submitted!",
-        description: "Your answers have been submitted for AI evaluation.",
+        title: "Assessment Complete!",
+        description: "Your results have been generated with AI feedback.",
       });
 
     } catch (error: any) {
@@ -223,18 +250,44 @@ const TakeAssignment = () => {
             </div>
 
             <div className="space-y-4 mb-8">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-left">
-                <div className="flex items-start space-x-3">
-                  <Brain className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-blue-900">AI Evaluation in Progress</p>
-                    <p className="text-sm text-blue-700">
-                      Your detailed feedback and personalized insights will be available shortly. 
-                      The AI is analyzing your responses to provide constructive feedback.
-                    </p>
+              {results.feedback && results.feedback.length > 0 ? (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Detailed Feedback</h3>
+                  {results.feedback.map((feedback: any, index: number) => (
+                    <div key={index} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium">Question {feedback.questionId}</span>
+                        <Badge variant={feedback.isCorrect ? "default" : "secondary"}>
+                          {feedback.score}/{feedback.maxScore} points
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">{feedback.feedback}</p>
+                      {feedback.suggestions && (
+                        <p className="text-sm text-blue-600">{feedback.suggestions}</p>
+                      )}
+                    </div>
+                  ))}
+                  {results.overallFeedback && (
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="font-medium text-blue-900 mb-2">Overall Feedback</p>
+                      <p className="text-sm text-blue-700">{results.overallFeedback}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-left">
+                  <div className="flex items-start space-x-3">
+                    <Brain className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-blue-900">AI Evaluation in Progress</p>
+                      <p className="text-sm text-blue-700">
+                        Your detailed feedback and personalized insights will be available shortly. 
+                        The AI is analyzing your responses to provide constructive feedback.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
