@@ -2,8 +2,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Brain, Trophy } from 'lucide-react';
-import ParticleBackground from './ParticleBackground';
-import FloatingShapes from './FloatingShapes';
 
 const HeroSection: React.FC = () => {
   const containerVariants = {
@@ -67,9 +65,6 @@ const HeroSection: React.FC = () => {
 
   return (
     <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-purple-950 dark:via-gray-900 dark:to-pink-950">
-      {/* Animated Background Elements */}
-      <ParticleBackground />
-      <FloatingShapes />
       
       {/* Glowing orbs */}
       <motion.div
@@ -108,7 +103,8 @@ const HeroSection: React.FC = () => {
           {/* Animated Logo */}
           <motion.div
             className="flex items-center justify-center mb-8"
-            variants={logoVariants}
+            initial="hidden"
+            animate="visible"
           >
             <div className="relative">
               <motion.div
@@ -143,7 +139,8 @@ const HeroSection: React.FC = () => {
           {/* Main Headline */}
           <motion.h1
             className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
-            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
           >
             <span className="text-gradient bg-gradient-primary bg-clip-text text-transparent">
               Assess AI Wizard
@@ -171,7 +168,8 @@ const HeroSection: React.FC = () => {
           {/* Animated Tagline */}
           <motion.p
             className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed"
-            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
           >
             Transform your assessment experience with AI-powered quizzes that adapt to your learning style. 
             <motion.span
@@ -188,7 +186,8 @@ const HeroSection: React.FC = () => {
           {/* Feature Pills */}
           <motion.div
             className="flex flex-wrap justify-center gap-4 mb-12"
-            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
           >
             {[
               { icon: Brain, text: 'AI-Powered' },
@@ -212,9 +211,9 @@ const HeroSection: React.FC = () => {
           {/* CTA Buttons */}
           <motion.div
             className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-            variants={ctaVariants}
-            initial="hidden"
-            animate="visible"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 1, type: "spring", stiffness: 150, damping: 12 }}
           >
             <motion.div whileHover="hover" whileTap="tap">
               <Button

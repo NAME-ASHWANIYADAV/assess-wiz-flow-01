@@ -1,7 +1,7 @@
 
 const API_BASE = 'https://natwest-backend.onrender.com';
 
-export const apiCall = async (endpoint: string, options = {}) => {
+export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   const url = `${API_BASE}${endpoint}`;
   const response = await fetch(url, {
     ...options,
@@ -19,7 +19,7 @@ export const apiCall = async (endpoint: string, options = {}) => {
   return response.json();
 };
 
-export const apiCallWithAuth = async (endpoint: string, options = {}, token = null) => {
+export const apiCallWithAuth = async (endpoint: string, options: RequestInit = {}, token = null) => {
   const authToken = token || localStorage.getItem('token');
   if (!authToken) {
     throw new Error('No authentication token found. Please log in.');
