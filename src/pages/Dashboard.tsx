@@ -84,7 +84,7 @@ const Dashboard = () => {
     if (!session) return;
 
     // Fetch classes created by user
-    const { data: createdClassesData } = await (supabase as any)
+    const { data: createdClassesData } = await supabase
       .from('classes')
       .select('*')
       .eq('creator_id', session.user.id)
@@ -93,7 +93,7 @@ const Dashboard = () => {
     setCreatedClasses(createdClassesData || []);
 
     // Fetch classes user has joined
-    const { data: joinedClassesData } = await (supabase as any)
+    const { data: joinedClassesData } = await supabase
       .from('class_memberships')
       .select(`
         *,
@@ -121,7 +121,7 @@ const Dashboard = () => {
       const classCode = generateClassCode();
       const inviteLink = generateInviteLink();
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('classes')
         .insert({
           creator_id: user.id,
@@ -160,7 +160,7 @@ const Dashboard = () => {
 
     try {
       // Find class by code or invite link
-      const { data: classData, error: fetchError } = await (supabase as any)
+      const { data: classData, error: fetchError } = await supabase
         .from('classes')
         .select('*')
         .or(`class_code.eq.${joinCode.toUpperCase()},invite_link.eq.${joinCode}`)
@@ -176,7 +176,7 @@ const Dashboard = () => {
       }
 
       // Check if already joined
-      const { data: existingMembership } = await (supabase as any)
+      const { data: existingMembership } = await supabase
         .from('class_memberships')
         .select('*')
         .eq('user_id', user.id)
@@ -193,7 +193,7 @@ const Dashboard = () => {
       }
 
       // Join the class
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('class_memberships')
         .insert({
           user_id: user.id,

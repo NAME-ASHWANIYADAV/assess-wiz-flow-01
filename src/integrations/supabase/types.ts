@@ -102,6 +102,7 @@ export type Database = {
       }
       assignments: {
         Row: {
+          class_id: string | null
           content_data: Json
           content_type: string
           created_at: string
@@ -115,6 +116,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          class_id?: string | null
           content_data: Json
           content_type: string
           created_at?: string
@@ -128,6 +130,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          class_id?: string | null
           content_data?: Json
           content_type?: string
           created_at?: string
@@ -142,6 +145,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "assignments_creator_id_fkey"
             columns: ["creator_id"]
             isOneToOne: false
@@ -149,6 +159,74 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      class_memberships: {
+        Row: {
+          class_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          class_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          class_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_memberships_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          class_code: string
+          created_at: string
+          creator_id: string
+          description: string | null
+          id: string
+          invite_link: string
+          name: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          class_code: string
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          id?: string
+          invite_link: string
+          name: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          class_code?: string
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          id?: string
+          invite_link?: string
+          name?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
