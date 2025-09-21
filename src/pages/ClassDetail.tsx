@@ -275,11 +275,11 @@ const ClassDetail = () => {
                       Create Assignment
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Create New Assignment</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleCreateAssignment} className="space-y-4">
+                   <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                     <DialogHeader>
+                       <DialogTitle>Create New Assignment</DialogTitle>
+                     </DialogHeader>
+                     <form onSubmit={handleCreateAssignment} className="space-y-4 pb-6">
                       <div className="space-y-2">
                         <Label htmlFor="title">Assignment Title</Label>
                         <Input
