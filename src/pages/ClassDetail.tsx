@@ -103,11 +103,8 @@ const ClassDetail = () => {
       if (membersError) throw membersError;
       setMembers(membersData || []);
 
-      // Determine creator power strictly: must be creator of this class (or membership 'creator') AND have profile role 'creator'
-      const myMembership = (membersData || []).find(m => m.user_id === session.user.id);
-      const isCreatorInClass = classData.creator_id === session.user.id || myMembership?.role === 'creator';
-      const isCreatorFlag = Boolean(isCreatorInClass && myProfile?.role === 'creator');
-      setIsCreator(isCreatorFlag);
+      // Set creator status - only if user created this class
+      setIsCreator(classData.creator_id === session.user.id);
 
       // Fetch assignments
       const { data: assignmentsData, error: assignmentsError } = await supabase
@@ -120,7 +117,7 @@ const ClassDetail = () => {
       setAssignments(assignmentsData || []);
 
       // If creator, fetch submissions
-      if (isCreatorFlag) {
+      if (classData.creator_id === session.user.id) {
         const { data: submissionsData, error: submissionsError } = await supabase
           .from('assessment_submissions')
           .select(`
