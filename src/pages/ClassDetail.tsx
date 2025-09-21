@@ -171,9 +171,10 @@ const ClassDetail = () => {
           class_id: classId,
           title: assignmentForm.title,
           description: assignmentForm.description,
-          content_type: 'ai-generated',
+          content_type: 'text',
           content_data: { 
             topic: assignmentForm.topic,
+            source: 'ai',
             uploadedDocument: assignmentForm.uploadedFile?.name || null
           },
           questions: generatedQuestions,
