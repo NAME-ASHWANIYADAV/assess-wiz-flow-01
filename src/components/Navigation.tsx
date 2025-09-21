@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Menu, X, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -29,11 +30,14 @@ const Navigation = () => {
             <a href="#demo" className="text-foreground hover:text-primary transition-colors">Demo</a>
           </div>
 
-          {/* Desktop CTA */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost">Sign In</Button>
-            <Button variant="gradient" size="lg">Launch App</Button>
-          </div>
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" asChild>
+                <Link to="/login">Sign In</Link>
+              </Button>
+              <Button variant="gradient" size="lg" asChild>
+                <Link to="/signup">Launch App</Link>
+              </Button>
+            </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden">
@@ -58,8 +62,12 @@ const Navigation = () => {
               <a href="#testimonials" className="block px-3 py-2 text-foreground hover:bg-accent rounded-md">Testimonials</a>
               <a href="#demo" className="block px-3 py-2 text-foreground hover:bg-accent rounded-md">Demo</a>
               <div className="flex flex-col space-y-2 pt-4">
-                <Button variant="ghost" className="justify-start">Sign In</Button>
-                <Button variant="gradient">Launch App</Button>
+                <Button variant="ghost" className="justify-start" asChild>
+                  <Link to="/login">Sign In</Link>
+                </Button>
+                <Button variant="gradient" asChild>
+                  <Link to="/signup">Launch App</Link>
+                </Button>
               </div>
             </div>
           </div>

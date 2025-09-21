@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Brain, Trophy } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const HeroSection: React.FC = () => {
   const containerVariants = {
@@ -225,18 +226,16 @@ const HeroSection: React.FC = () => {
               </Button>
             </motion.div>
             
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
               <Button
                 size="lg"
                 variant="outline"
                 className="border-primary text-primary px-8 py-6 text-lg rounded-xl hover:bg-primary hover:text-white transition-all duration-300"
+                asChild
               >
-                Watch Demo
+                <Link to="/login">
+                  Watch Demo
+                </Link>
               </Button>
-            </motion.div>
           </motion.div>
 
           {/* Scroll Indicator */}
