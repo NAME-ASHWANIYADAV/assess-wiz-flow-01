@@ -55,15 +55,54 @@ const Auth = () => {
   }, []);
 
   const checkUserProfile = async (userId: string) => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-    
-    if (profile) {
-      // User has a profile, redirect to dashboard
-      navigate('/dashboard');
+    try {
+      console.log('Checking profile for user:', userId);
+      
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Profile check error:', error);
+        return;
+      }
+      
+      console.log('Profile found:', profile);
+      
+      if (profile) {
+        // User has a profile, redirect to dashboard
+        navigate('/dashboard');
+      } else {
+        // User is authenticated but no profile exists - create one
+        console.log('No profile found, creating one...');
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: user.id,
+              full_name: user.user_metadata?.full_name || 'User',
+              role: 'learner'
+            });
+            
+          if (createError) {
+            console.error('Profile creation error:', createError);
+            toast({
+              title: "Profile Setup Issue",
+              description: "There was an issue setting up your profile. Please contact support.",
+              variant: "destructive"
+            });
+          } else {
+            console.log('Profile created successfully');
+            navigate('/dashboard');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Profile check failed:', error);
     }
   };
 
@@ -378,10 +417,32 @@ const Auth = () => {
           </Card>
 
           {/* Back to Landing */}
-          <div className="text-center mt-6">
+          <div className="text-center mt-6 space-y-2">
             <Button variant="ghost" onClick={() => navigate('/')}>
               ← Back to Home
             </Button>
+            {user && (
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Already signed in as: {user.email}
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    setSession(null);
+                    toast({
+                      title: "Signed Out",
+                      description: "You have been signed out successfully"
+                    });
+                  }}
+                >
+                  Sign Out
+                </Button>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>
