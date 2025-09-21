@@ -50,7 +50,9 @@ const ClassDetail = () => {
     questionType: 'multiple-choice',
     numQuestions: 10,
     difficulty: 'medium',
-    contentType: 'ai-generated'
+    contentType: 'ai-generated',
+    timeLimit: 60,
+    uploadedFile: null as File | null
   });
 
   useEffect(() => {
@@ -160,9 +162,13 @@ const ClassDetail = () => {
           title: assignmentForm.title,
           description: assignmentForm.description,
           content_type: 'ai-generated',
-          content_data: { topic: assignmentForm.topic },
+          content_data: { 
+            topic: assignmentForm.topic,
+            uploadedDocument: assignmentForm.uploadedFile?.name || null
+          },
           questions: generatedQuestions,
-          share_link: shareLink
+          share_link: shareLink,
+          time_limit: assignmentForm.timeLimit
         });
 
       if (error) throw error;
@@ -180,7 +186,9 @@ const ClassDetail = () => {
         questionType: 'multiple-choice',
         numQuestions: 10,
         difficulty: 'medium',
-        contentType: 'ai-generated'
+        contentType: 'ai-generated',
+        timeLimit: 60,
+        uploadedFile: null
       });
       
       await fetchClassData();
@@ -257,11 +265,10 @@ const ClassDetail = () => {
             </div>
             
             <div className="flex items-center space-x-2">
-              <Badge variant={isCreator ? "default" : "secondary"}>
-                {isCreator ? "Creator" : "Student"}
-              </Badge>
               {isCreator && (
-                <Dialog open={showCreateAssignment} onOpenChange={setShowCreateAssignment}>
+                <>
+                  <Badge variant="default">Creator</Badge>
+                  <Dialog open={showCreateAssignment} onOpenChange={setShowCreateAssignment}>
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="w-4 h-4 mr-2" />
@@ -284,15 +291,36 @@ const ClassDetail = () => {
                         />
                       </div>
                       
-                      <div className="space-y-2">
+                       <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
                         <Textarea
                           id="description"
                           value={assignmentForm.description}
                           onChange={(e) => setAssignmentForm({...assignmentForm, description: e.target.value})}
-                          placeholder="Assignment description..."
+                          placeholder="Assignment description or upload PDF/DOCX document for AI analysis..."
                           rows={3}
                         />
+                      </div>
+
+                      {/* Document Upload */}
+                      <div className="space-y-2">
+                        <Label htmlFor="document">Upload Document (PDF/DOCX)</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            type="file"
+                            accept=".pdf,.docx,.doc"
+                            onChange={(e) => setAssignmentForm({...assignmentForm, uploadedFile: e.target.files?.[0] || null})}
+                            className="flex-1"
+                          />
+                          <Button type="button" variant="outline" size="sm">
+                            <Upload className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        {assignmentForm.uploadedFile && (
+                          <p className="text-sm text-muted-foreground">
+                            Selected: {assignmentForm.uploadedFile.name}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -306,8 +334,27 @@ const ClassDetail = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="ai-generated">AI Generated</SelectItem>
-                            <SelectItem value="manual">Manual Creation</SelectItem>
-                            <SelectItem value="upload">Upload Document</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Time Limit */}
+                      <div className="space-y-2">
+                        <Label htmlFor="timeLimit">Time Limit (minutes)</Label>
+                        <Select 
+                          value={assignmentForm.timeLimit.toString()} 
+                          onValueChange={(value) => setAssignmentForm({...assignmentForm, timeLimit: parseInt(value)})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="15">15 minutes</SelectItem>
+                            <SelectItem value="30">30 minutes</SelectItem>
+                            <SelectItem value="45">45 minutes</SelectItem>
+                            <SelectItem value="60">1 hour</SelectItem>
+                            <SelectItem value="90">1.5 hours</SelectItem>
+                            <SelectItem value="120">2 hours</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -403,6 +450,7 @@ const ClassDetail = () => {
                     </form>
                   </DialogContent>
                 </Dialog>
+                </>
               )}
             </div>
           </div>

@@ -112,6 +112,7 @@ export type Database = {
           is_active: boolean
           questions: Json
           share_link: string
+          time_limit: number | null
           title: string
           updated_at: string
         }
@@ -126,6 +127,7 @@ export type Database = {
           is_active?: boolean
           questions?: Json
           share_link: string
+          time_limit?: number | null
           title: string
           updated_at?: string
         }
@@ -140,6 +142,7 @@ export type Database = {
           is_active?: boolean
           questions?: Json
           share_link?: string
+          time_limit?: number | null
           title?: string
           updated_at?: string
         }
@@ -189,6 +192,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "classes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }
