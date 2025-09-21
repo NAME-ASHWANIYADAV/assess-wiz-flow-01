@@ -82,8 +82,9 @@ serve(async (req) => {
               parts: [{ text: `You are an expert educational content creator. Generate high-quality assessment questions that test real understanding. Always respond with valid JSON only, no additional text.\n\n${prompt}` }]
             }],
             generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 2000,
+              temperature: 0.4,
+              maxOutputTokens: 4096,
+              response_mime_type: 'application/json'
             }
           }),
         });
@@ -116,8 +117,41 @@ serve(async (req) => {
     }
 
     if (!generatedContent) {
+      const finishReason = data?.candidates?.[0]?.finishReason;
       console.error('Gemini unexpected response:', JSON.stringify(data));
-      throw new Error('AI returned an unexpected response');
+      // Retry once with fewer questions and strict JSON forcing
+      try {
+        const reducedCount = Math.max(3, Math.ceil((numQuestions || 10) / 2));
+        console.log('Retrying with reduced questions due to empty content/finishReason', finishReason, '->', reducedCount);
+        const resp2 = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${requestedModel}:generateContent?key=${geminiApiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              role: 'user',
+              parts: [{ text: `You are an expert educational content creator. Always respond with strict JSON only, no extra text. Keep outputs concise. Create ${reducedCount} ${difficulty} level ${questionType} questions about "${topic}" using the same JSON schema as before.` }]
+            }],
+            generationConfig: {
+              temperature: 0.4,
+              maxOutputTokens: 3072,
+              response_mime_type: 'application/json'
+            }
+          }),
+        });
+        const body2 = await resp2.json();
+        const parts2 = body2?.candidates?.[0]?.content?.parts;
+        if (Array.isArray(parts2)) {
+          generatedContent = parts2.map((p: any) => p?.text || '').join('\n').trim();
+        } else if (typeof body2?.candidates?.[0]?.content?.text === 'string') {
+          generatedContent = body2.candidates[0].content.text;
+        }
+      } catch (retryErr) {
+        console.error('Retry failed:', retryErr);
+      }
+
+      if (!generatedContent) {
+        throw new Error('AI returned an unexpected response');
+      }
     }
 
     console.log('Generated content:', generatedContent);

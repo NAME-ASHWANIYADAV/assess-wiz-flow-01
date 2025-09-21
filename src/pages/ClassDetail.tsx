@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   ArrowLeft, 
@@ -79,7 +79,14 @@ const ClassDetail = () => {
       if (classError) throw classError;
       
       setClassData(classData);
-      setIsCreator(classData.creator_id === session.user.id);
+
+      // Fetch current user's profile role
+      const { data: myProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single();
+      if (profileError) throw profileError;
 
       // Fetch class members
       const { data: membersData, error: membersError } = await supabase
@@ -96,6 +103,12 @@ const ClassDetail = () => {
       if (membersError) throw membersError;
       setMembers(membersData || []);
 
+      // Determine creator power strictly: must be creator of this class (or membership 'creator') AND have profile role 'creator'
+      const myMembership = (membersData || []).find(m => m.user_id === session.user.id);
+      const isCreatorInClass = classData.creator_id === session.user.id || myMembership?.role === 'creator';
+      const isCreatorFlag = Boolean(isCreatorInClass && myProfile?.role === 'creator');
+      setIsCreator(isCreatorFlag);
+
       // Fetch assignments
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('assignments')
@@ -107,7 +120,7 @@ const ClassDetail = () => {
       setAssignments(assignmentsData || []);
 
       // If creator, fetch submissions
-      if (classData.creator_id === session.user.id) {
+      if (isCreatorFlag) {
         const { data: submissionsData, error: submissionsError } = await supabase
           .from('assessment_submissions')
           .select(`
@@ -206,6 +219,11 @@ const ClassDetail = () => {
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isCreator) {
+      toast({ title: 'Not allowed', description: 'Only class creators can create assignments.', variant: 'destructive' });
+      return;
+    }
     
     if (assignmentForm.contentType === 'ai-generated') {
       await generateAssignmentWithAI();
@@ -278,6 +296,7 @@ const ClassDetail = () => {
                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                      <DialogHeader>
                        <DialogTitle>Create New Assignment</DialogTitle>
+                       <DialogDescription>Fill the details and optionally generate questions with AI. Only class creators can create assignments.</DialogDescription>
                      </DialogHeader>
                      <form onSubmit={handleCreateAssignment} className="space-y-4 pb-6">
                       <div className="space-y-2">
