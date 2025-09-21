@@ -13,7 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'creator' | 'learner'>('learner');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [formData, setFormData] = useState({
     email: '',
@@ -43,12 +42,8 @@ const Auth = () => {
       .maybeSingle();
     
     if (profile) {
-      // User has a profile, redirect based on role
-      if (profile.role === 'creator') {
-        navigate('/creator-studio');
-      } else {
-        navigate('/learner-dashboard');
-      }
+      // User has a profile, redirect to dashboard
+      navigate('/dashboard');
     }
   };
 
@@ -123,8 +118,7 @@ const Auth = () => {
         options: {
           emailRedirectTo: `${window.location.origin}/auth`,
           data: {
-            full_name: formData.fullName,
-            role: selectedRole
+            full_name: formData.fullName
           }
         }
       });
@@ -145,7 +139,7 @@ const Auth = () => {
           .insert({
             user_id: data.user.id,
             full_name: formData.fullName,
-            role: selectedRole
+            role: 'learner' // Default role, users can be both learner and creator
           });
 
         if (profileError) {
@@ -157,12 +151,8 @@ const Auth = () => {
           description: "Account created successfully. Please check your email for verification.",
         });
 
-        // Redirect based on role
-        if (selectedRole === 'creator') {
-          navigate('/creator-studio');
-        } else {
-          navigate('/learner-dashboard');
-        }
+        // Redirect to dashboard
+        navigate('/dashboard');
       }
     } catch (error) {
       toast({
@@ -175,22 +165,6 @@ const Auth = () => {
     }
   };
 
-  const roleOptions = [
-    {
-      value: 'creator',
-      title: 'Creator',
-      description: 'Create and manage AI-powered assignments',
-      icon: UserCheck,
-      gradient: 'from-purple-500 to-pink-500'
-    },
-    {
-      value: 'learner',
-      title: 'Learner',
-      description: 'Take assessments and track your progress',
-      icon: GraduationCap,
-      gradient: 'from-blue-500 to-cyan-500'
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/50 to-primary/5 flex items-center justify-center px-4">
@@ -287,37 +261,6 @@ const Auth = () => {
               </TabsContent>
 
               <TabsContent value="signup" className="space-y-6">
-                {/* Role Selection */}
-                <div className="space-y-3">
-                  <Label>Choose Your Role</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {roleOptions.map((role) => (
-                      <motion.div
-                        key={role.value}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <Card
-                          className={`p-4 cursor-pointer border-2 transition-all ${
-                            selectedRole === role.value
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                          onClick={() => setSelectedRole(role.value as 'creator' | 'learner')}
-                        >
-                          <div className="text-center space-y-2">
-                            <div className={`w-8 h-8 mx-auto rounded-lg bg-gradient-to-r ${role.gradient} flex items-center justify-center`}>
-                              <role.icon className="w-4 h-4 text-white" />
-                            </div>
-                            <h3 className="font-semibold text-sm">{role.title}</h3>
-                            <p className="text-xs text-muted-foreground leading-tight">{role.description}</p>
-                          </div>
-                        </Card>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="fullName">Full Name</Label>
