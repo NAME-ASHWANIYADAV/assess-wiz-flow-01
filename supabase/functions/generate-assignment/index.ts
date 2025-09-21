@@ -52,7 +52,10 @@ serve(async (req) => {
     For true-false questions, use options: ["True", "False"]
     For short-answer questions, omit the options field entirely.`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY is not set');
+    }
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -76,7 +79,12 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const generatedContent = data.candidates[0].content.parts[0].text;
+    const generatedContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!generatedContent) {
+      console.error('Gemini unexpected response:', JSON.stringify(data));
+      throw new Error('AI returned an unexpected response');
+    }
 
     console.log('Generated content:', generatedContent);
 
