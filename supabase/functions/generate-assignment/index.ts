@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    const { topic, description, questionType, numQuestions, difficulty } = await req.json();
+    const { topic, description, questionType, numQuestions, difficulty, model } = await req.json();
 
     if (!topic) {
       throw new Error('Topic is required');
@@ -55,30 +55,58 @@ serve(async (req) => {
     if (!geminiApiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `You are an expert educational content creator. Generate high-quality assessment questions that test real understanding. Always respond with valid JSON only, no additional text.\n\n${prompt}`
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2000,
-        }
-      }),
-    });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'Failed to generate questions');
+    const requestedModel = (model as string) || 'gemini-2.5-pro';
+    const modelsToTry = Array.from(new Set([
+      requestedModel,
+      'gemini-2.5-pro',
+      'gemini-2.5-flash',
+      'gemini-1.5-pro',
+      'gemini-1.5-flash',
+    ]));
+
+    let data: any | null = null;
+    let lastError: any = null;
+
+    for (const m of modelsToTry) {
+      try {
+        console.log('Attempting Gemini model:', m);
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiApiKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: `You are an expert educational content creator. Generate high-quality assessment questions that test real understanding. Always respond with valid JSON only, no additional text.\n\n${prompt}`
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 2000,
+            }
+          }),
+        });
+
+        const body = await resp.json();
+        if (!resp.ok) {
+          throw new Error(body.error?.message || `Gemini error (${resp.status})`);
+        }
+
+        data = body;
+        console.log('Gemini success with model:', m);
+        break;
+      } catch (err) {
+        console.error('Gemini attempt failed:', m, err);
+        lastError = err;
+      }
     }
 
-    const data = await response.json();
+    if (!data) {
+      throw lastError || new Error('Failed to generate questions with Gemini');
+    }
+
     const generatedContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!generatedContent) {
@@ -91,7 +119,11 @@ serve(async (req) => {
     // Parse the JSON response
     let questions;
     try {
-      questions = JSON.parse(generatedContent);
+      let jsonText = String(generatedContent).trim();
+      if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```(json)?\n?/i, '').replace(/\n?```$/, '');
+      }
+      questions = JSON.parse(jsonText);
     } catch (parseError) {
       console.error('Failed to parse JSON:', parseError);
       console.error('Raw content:', generatedContent);
