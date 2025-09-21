@@ -78,9 +78,8 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             contents: [{
-              parts: [{
-                text: `You are an expert educational content creator. Generate high-quality assessment questions that test real understanding. Always respond with valid JSON only, no additional text.\n\n${prompt}`
-              }]
+              role: 'user',
+              parts: [{ text: `You are an expert educational content creator. Generate high-quality assessment questions that test real understanding. Always respond with valid JSON only, no additional text.\n\n${prompt}` }]
             }],
             generationConfig: {
               temperature: 0.7,
@@ -107,7 +106,14 @@ serve(async (req) => {
       throw lastError || new Error('Failed to generate questions with Gemini');
     }
 
-    const generatedContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Extract text from all parts if present
+    const parts = data?.candidates?.[0]?.content?.parts;
+    let generatedContent = '';
+    if (Array.isArray(parts)) {
+      generatedContent = parts.map((p: any) => p?.text || '').join('\n').trim();
+    } else if (typeof data?.candidates?.[0]?.content?.text === 'string') {
+      generatedContent = data.candidates[0].content.text;
+    }
 
     if (!generatedContent) {
       console.error('Gemini unexpected response:', JSON.stringify(data));
@@ -123,7 +129,21 @@ serve(async (req) => {
       if (jsonText.startsWith('```')) {
         jsonText = jsonText.replace(/^```(json)?\n?/i, '').replace(/\n?```$/, '');
       }
-      questions = JSON.parse(jsonText);
+      // Try direct parse
+      try {
+        const parsed = JSON.parse(jsonText);
+        questions = Array.isArray(parsed) ? parsed : parsed?.questions;
+      } catch (_) {
+        // Fallback: extract first JSON array from text
+        const first = jsonText.indexOf('[');
+        const last = jsonText.lastIndexOf(']');
+        if (first !== -1 && last !== -1 && last > first) {
+          const slice = jsonText.slice(first, last + 1);
+          questions = JSON.parse(slice);
+        } else {
+          throw new Error('No JSON array found in model output');
+        }
+      }
     } catch (parseError) {
       console.error('Failed to parse JSON:', parseError);
       console.error('Raw content:', generatedContent);

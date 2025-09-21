@@ -1,1 +1,4 @@
 project_id = "djoopdqhwniekcifzcok"
+
+[functions.generate-assignment]
+verify_jwt = false
