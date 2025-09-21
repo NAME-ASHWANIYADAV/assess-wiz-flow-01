@@ -23,9 +23,10 @@ const Navigation = () => {
           <div className="hidden md:flex items-center space-x-8">
             <a href="#home" className="text-foreground hover:text-primary transition-colors">Home</a>
             <a href="#features" className="text-foreground hover:text-primary transition-colors">Features</a>
+            <a href="#pricing" className="text-foreground hover:text-primary transition-colors">Pricing</a>
             <a href="#about" className="text-foreground hover:text-primary transition-colors">About</a>
-            <a href="#leaderboard" className="text-foreground hover:text-primary transition-colors">Leaderboard</a>
-            <a href="#contact" className="text-foreground hover:text-primary transition-colors">Contact</a>
+            <a href="#testimonials" className="text-foreground hover:text-primary transition-colors">Testimonials</a>
+            <a href="#demo" className="text-foreground hover:text-primary transition-colors">Demo</a>
           </div>
 
           {/* Desktop CTA */}
@@ -52,9 +53,10 @@ const Navigation = () => {
             <div className="px-2 pt-2 pb-3 space-y-1 bg-card border border-border rounded-lg mt-2 shadow-card">
               <a href="#home" className="block px-3 py-2 text-foreground hover:bg-accent rounded-md">Home</a>
               <a href="#features" className="block px-3 py-2 text-foreground hover:bg-accent rounded-md">Features</a>
+              <a href="#pricing" className="block px-3 py-2 text-foreground hover:bg-accent rounded-md">Pricing</a>
               <a href="#about" className="block px-3 py-2 text-foreground hover:bg-accent rounded-md">About</a>
-              <a href="#leaderboard" className="block px-3 py-2 text-foreground hover:bg-accent rounded-md">Leaderboard</a>
-              <a href="#contact" className="block px-3 py-2 text-foreground hover:bg-accent rounded-md">Contact</a>
+              <a href="#testimonials" className="block px-3 py-2 text-foreground hover:bg-accent rounded-md">Testimonials</a>
+              <a href="#demo" className="block px-3 py-2 text-foreground hover:bg-accent rounded-md">Demo</a>
               <div className="flex flex-col space-y-2 pt-4">
                 <Button variant="ghost" className="justify-start">Sign In</Button>
                 <Button variant="gradient">Launch App</Button>
