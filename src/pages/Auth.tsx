@@ -14,6 +14,8 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -25,13 +27,31 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user is already authenticated
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        // Check if user has a profile
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Use setTimeout to prevent deadlock when making Supabase calls
+        if (session?.user) {
+          setTimeout(() => {
+            checkUserProfile(session.user.id);
+          }, 0);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
         checkUserProfile(session.user.id);
       }
     });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const checkUserProfile = async (userId: string) => {
@@ -112,13 +132,16 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      const redirectUrl = `${window.location.origin}/dashboard`;
+      
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth`,
+          emailRedirectTo: redirectUrl,
           data: {
-            full_name: formData.fullName
+            full_name: formData.fullName,
+            role: 'learner'
           }
         }
       });
@@ -133,31 +156,36 @@ const Auth = () => {
       }
 
       if (data.user) {
-        // Create profile
+        // Create profile - will be handled by auth state change
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
             user_id: data.user.id,
             full_name: formData.fullName,
-            role: 'learner' // Default role, users can be both learner and creator
+            role: 'learner'
           });
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
+          toast({
+            title: "Profile Error",
+            description: "Account created but profile setup failed. Please try signing in.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Success!",
+            description: data.user.email_confirmed_at 
+              ? "Account created successfully!" 
+              : "Account created! Please check your email for verification.",
+          });
         }
-
-        toast({
-          title: "Success!",
-          description: "Account created successfully. Please check your email for verification.",
-        });
-
-        // Redirect to dashboard
-        navigate('/dashboard');
       }
     } catch (error) {
+      console.error('Signup error:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "An unexpected error occurred during signup",
         variant: "destructive"
       });
     } finally {
