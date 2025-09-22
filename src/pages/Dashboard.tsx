@@ -154,74 +154,80 @@ const Dashboard = () => {
     }
   };
 
-  const handleJoinClass = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+ // ...existing code...
 
-    try {
-      // Find class by code or invite link
-      const { data: classData, error: fetchError } = await supabase
-        .from('classes')
-        .select('*')
-        .or(`class_code.eq.${joinCode.toUpperCase()},invite_link.eq.${joinCode}`)
-        .maybeSingle();
+const handleJoinClass = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
 
-      if (fetchError || !classData) {
-        toast({
-          title: "Class not found",
-          description: "Invalid class code or invite link",
-          variant: "destructive"
-        });
-        return;
-      }
+  try {
+    // 1. Find class by code or invite link
+    const { data: classData, error: fetchError } = await supabase
+      .from('classes')
+      .select('*')
+      .or(`class_code.eq.${joinCode.trim().toUpperCase()},invite_link.eq.${joinCode.trim()}`)
+      .maybeSingle();
 
-      // Check if already joined
-      const { data: existingMembership } = await supabase
-        .from('class_memberships')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('class_id', classData.id)
-        .maybeSingle();
-
-      if (existingMembership) {
-        toast({
-          title: "Already joined",
-          description: "You're already a member of this class",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Join the class
-      const { error } = await supabase
-        .from('class_memberships')
-        .insert({
-          user_id: user.id,
-          class_id: classData.id,
-          role: 'student'
-        });
-
-      if (error) throw error;
-
+    if (fetchError || !classData) {
       toast({
-        title: "Success!",
-        description: `Joined ${classData.name} successfully`,
-      });
-
-      setJoinCode('');
-      setShowJoinClass(false);
-      await fetchUserData();
-
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to join class",
+        title: "Class not found",
+        description: "Invalid class code or invite link",
         variant: "destructive"
       });
-    } finally {
       setIsLoading(false);
+      return;
     }
-  };
+
+    // 2. Check if already joined
+    const { data: existingMembership } = await supabase
+      .from('class_memberships')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('class_id', classData.id)
+      .maybeSingle();
+
+    if (existingMembership) {
+      toast({
+        title: "Already joined",
+        description: "You're already a member of this class",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // 3. Join the class
+    const { error } = await supabase
+      .from('class_memberships')
+      .insert({
+        user_id: user.id,
+        class_id: classData.id,
+        role: 'student'
+      });
+
+    if (error) throw error;
+
+    toast({
+      title: "Success!",
+      description: `Joined ${classData.name} successfully`,
+    });
+
+    setJoinCode('');
+    setShowJoinClass(false);
+
+    // 4. Redirect to the class page
+    navigate(`/class/${classData.id}`);
+
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.message || "Failed to join class",
+      variant: "destructive"
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const copyClassCode = (code: string) => {
     navigator.clipboard.writeText(code);

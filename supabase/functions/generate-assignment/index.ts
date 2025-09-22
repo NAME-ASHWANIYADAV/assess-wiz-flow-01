@@ -15,7 +15,11 @@ serve(async (req) => {
   }
 
   try {
-    const { topic, description, questionType, numQuestions, difficulty, model } = await req.json();
+    console.log("Request received:", req.method, req.url);
+    const body = await req.json();
+    console.log("Request body:", body);
+
+    const { topic, description, questionType, numQuestions, difficulty, model } = body;
 
     if (!topic) {
       throw new Error('Topic is required');
@@ -53,6 +57,7 @@ serve(async (req) => {
     For short-answer questions, omit the options field entirely.`;
 
     if (!geminiApiKey) {
+      console.error('GEMINI_API_KEY is not set');
       throw new Error('GEMINI_API_KEY is not set');
     }
 
@@ -89,12 +94,13 @@ serve(async (req) => {
           }),
         });
 
-        const body = await resp.json();
+        const responseBody = await resp.json();
         if (!resp.ok) {
-          throw new Error(body.error?.message || `Gemini error (${resp.status})`);
+          console.error("Gemini API Error:", responseBody.error?.message);
+          throw new Error(responseBody.error?.message || `Gemini error (${resp.status})`);
         }
 
-        data = body;
+        data = responseBody;
         console.log('Gemini success with model:', m);
         break;
       } catch (err) {
@@ -206,7 +212,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error in generate-assignment function:', error);
+    console.error('Error in generate-assignment function:', error.message, error.stack);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

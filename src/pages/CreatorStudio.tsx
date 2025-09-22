@@ -26,7 +26,8 @@ const CreatorStudio = () => {
     contentType: 'text',
     textContent: '',
     fileContent: null as File | null,
-    urlContent: ''
+    urlContent: '',
+    num_questions: 10,
   });
 
   const navigate = useNavigate();
@@ -97,19 +98,48 @@ const CreatorStudio = () => {
     setIsLoading(true);
 
     try {
-      let contentData: any = {};
-      
+      let questions = [];
+
       if (assignmentForm.contentType === 'text') {
-        contentData = { text: assignmentForm.textContent };
-      } else if (assignmentForm.contentType === 'url') {
-        contentData = { url: assignmentForm.urlContent };
+        const response = await fetch('http://localhost:8000/generate-quiz', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: assignmentForm.textContent,
+            num_questions: assignmentForm.num_questions,
+            title: assignmentForm.title,
+            creator_id: user.id,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Failed to generate quiz from text');
+        }
+
+        const quizData = await response.json();
+        questions = quizData.questions;
       } else if (assignmentForm.contentType === 'file' && assignmentForm.fileContent) {
-        // For now, we'll store file info - you can extend this to upload to Supabase Storage
-        contentData = { 
-          fileName: assignmentForm.fileContent.name,
-          fileSize: assignmentForm.fileContent.size,
-          fileType: assignmentForm.fileContent.type
-        };
+        const formData = new FormData();
+        formData.append('file', assignmentForm.fileContent);
+        formData.append('title', assignmentForm.title);
+        formData.append('num_questions', assignmentForm.num_questions.toString());
+        formData.append('creator_id', user.id);
+
+        const response = await fetch('http://localhost:8000/generate-quiz-from-file', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Failed to generate quiz from file');
+        }
+
+        const quizData = await response.json();
+        questions = quizData.questions;
       }
 
       const shareLink = generateShareLink();
@@ -121,9 +151,9 @@ const CreatorStudio = () => {
           title: assignmentForm.title,
           description: assignmentForm.description,
           content_type: assignmentForm.contentType,
-          content_data: contentData,
+          content_data: {},
           share_link: shareLink,
-          questions: [] // Will be populated by AI later
+          questions: questions,
         });
 
       if (error) {
@@ -132,7 +162,7 @@ const CreatorStudio = () => {
 
       toast({
         title: "Success!",
-        description: "Assignment created successfully. Ready for AI generation!",
+        description: "Assignment created successfully with AI-generated questions!",
       });
 
       // Reset form
@@ -142,7 +172,8 @@ const CreatorStudio = () => {
         contentType: 'text',
         textContent: '',
         fileContent: null,
-        urlContent: ''
+        urlContent: '',
+        num_questions: 10,
       });
 
       // Refresh assignments
@@ -151,8 +182,8 @@ const CreatorStudio = () => {
 
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to create assignment",
+        title: "Error creating assignment",
+        description: error.message,
         variant: "destructive"
       });
     } finally {
@@ -241,6 +272,16 @@ const CreatorStudio = () => {
                         value={assignmentForm.title}
                         onChange={(e) => handleFormChange('title', e.target.value)}
                         placeholder="e.g., The Water Cycle"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="num_questions">Number of Questions</Label>
+                      <Input
+                        id="num_questions"
+                        type="number"
+                        value={assignmentForm.num_questions}
+                        onChange={(e) => handleFormChange('num_questions', parseInt(e.target.value))}
                         required
                       />
                     </div>
