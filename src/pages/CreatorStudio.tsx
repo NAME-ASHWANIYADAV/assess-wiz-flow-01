@@ -101,7 +101,7 @@ const CreatorStudio = () => {
       let questions = [];
 
       if (assignmentForm.contentType === 'text') {
-        const response = await fetch('http://localhost:8000/generate-quiz', {
+        const response = await fetch('https://natwest-backend.onrender.com/generate-quiz', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ const CreatorStudio = () => {
         formData.append('num_questions', assignmentForm.num_questions.toString());
         formData.append('creator_id', user.id);
 
-        const response = await fetch('http://localhost:8000/generate-quiz-from-file', {
+        const response = await fetch('https://natwest-backend.onrender.com/generate-quiz-from-file', {
           method: 'POST',
           body: formData,
         });

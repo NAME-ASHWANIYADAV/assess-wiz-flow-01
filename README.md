@@ -1,22 +1,22 @@
-# Welcome to your Lovable project
+# Welcome to your EduGenius AI project
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/e43b5087-2eb9-42d4-b997-519e3b113717
+**URL**: https://www.edugeniusai.com/
 
 ## How can I edit this code?
 
 There are several ways of editing your application.
 
-**Use Lovable**
+**Use EduGenius AI**
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e43b5087-2eb9-42d4-b997-519e3b113717) and start prompting.
+Simply visit the [EduGenius AI Project](https://www.edugeniusai.com/) and start prompting.
 
-Changes made via Lovable will be committed automatically to this repo.
+Changes made via EduGenius AI will be committed automatically to this repo.
 
 **Use your preferred IDE**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in EduGenius AI.
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
@@ -62,12 +62,12 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/e43b5087-2eb9-42d4-b997-519e3b113717) and click on Share -> Publish.
+Simply open [EduGenius AI](https://www.edugeniusai.com/) and click on Share -> Publish.
 
-## Can I connect a custom domain to my Lovable project?
+## Can I connect a custom domain to my EduGenius AI project?
 
 Yes, you can!
 
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Read more here: [Setting up a custom domain](https://docs.edugeniusai.com/features/custom-domain#custom-domain)
