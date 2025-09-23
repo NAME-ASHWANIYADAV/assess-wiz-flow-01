@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Clock, CheckCircle, AlertCircle, Send, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Brain, Clock, CheckCircle, Send, ArrowRight, ArrowLeft, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,25 +18,27 @@ interface Question {
   type: 'multiple_choice' | 'short_answer' | 'essay' | 'true_false';
   question: string;
   options?: string[];
-  correctAnswer?: string;
-  explanation?: string;
   points: number;
 }
 
 const TakeAssignment = () => {
   const { shareLink } = useParams();
-  const [assignment, setAssignment] = useState<any>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<{[key: string]: string}>({});
-  const [learnerName, setLearnerName] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [results, setResults] = useState<any>(null);
-  const [timeStarted] = useState(new Date());
-  
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const [assignment, setAssignment] = useState<any>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const [learnerName, setLearnerName] = useState('');
+  const [isStarted, setIsStarted] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<{[key: string]: string}>({});
+  const [results, setResults] = useState<any>(null);
+  const [timeStarted, setTimeStarted] = useState<Date | null>(null);
 
   useEffect(() => {
     fetchAssignment();
@@ -44,7 +46,7 @@ const TakeAssignment = () => {
 
   const fetchAssignment = async () => {
     if (!shareLink) return;
-
+    setIsLoading(true);
     const { data, error } = await supabase
       .from('assignments')
       .select('*')
@@ -53,251 +55,139 @@ const TakeAssignment = () => {
       .maybeSingle();
 
     if (error || !data) {
-      toast({
-        title: "Assignment Not Found",
-        description: "The assignment link is invalid or has been disabled.",
-        variant: "destructive"
-      });
+      toast({ title: "Assignment Not Found", description: "The link is invalid or disabled.", variant: "destructive" });
       navigate('/');
       return;
     }
 
     setAssignment(data);
     
-    // Set questions from assignment data
     if (data.questions && Array.isArray(data.questions)) {
       const formattedQuestions: Question[] = data.questions.map((q: any) => ({
         id: q.id.toString(),
-        type: q.type === 'multiple-choice' ? 'multiple_choice' : 
-              q.type === 'true-false' ? 'true_false' :
-              q.type === 'short-answer' ? 'short_answer' : 'essay',
+        type: q.type,
         question: q.question,
         options: q.options || [],
-        correctAnswer: q.correctAnswer,
-        explanation: q.explanation,
         points: q.points || 10
       }));
       setQuestions(formattedQuestions);
     }
+    setIsLoading(false);
+  };
+
+  const handleStartAssignment = () => {
+    if (!learnerName.trim()) {
+      toast({ title: "Name Required", description: "Please enter your name to begin.", variant: "destructive" });
+      return;
+    }
+    setTimeStarted(new Date());
+    setIsStarted(true);
   };
 
   const handleAnswerChange = (questionId: string, answer: string) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: answer
-    }));
-  };
-
-  const currentQuestion = questions[currentQuestionIndex];
-  const isLastQuestion = currentQuestionIndex === questions.length - 1;
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
-
-  const nextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    }
-  };
-
-  const previousQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
+    setAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
   const submitAssignment = async () => {
-    if (!learnerName.trim()) {
-      toast({
-        title: "Name Required",
-        description: "Please enter your name to submit the assessment.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsSubmitting(true);
-
     try {
-      // Create submission first
-      const submissionData = {
-        assignment_id: assignment.id,
-        learner_name: learnerName,
-        answers: Object.entries(answers).map(([questionId, answer]) => ({
-          questionId,
-          answer,
-          question: questions.find(q => q.id === questionId)?.question
-        })),
-        ai_feedback: [],
-        total_score: 0,
-        max_score: questions.reduce((sum, q) => sum + q.points, 0)
+      const userAnswers = Object.entries(answers).map(([questionId, answer]) => ({
+        question_number: parseInt(questionId, 10),
+        answer: answer,
+      }));
+
+      const submissionRequest = {
+        user_name: learnerName,
+        user_answers: userAnswers
       };
 
-      const { data: submission, error } = await supabase
-        .from('assessment_submissions')
-        .insert(submissionData)
-        .select()
-        .single();
+      // Use the correct URL (localhost for testing, Render for production)
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
-      if (error) throw error;
-
-      // Get AI evaluation
-      toast({
-        title: "Evaluating...",
-        description: "AI is analyzing your responses",
+      const response = await fetch(`${backendUrl}/quizzes/${assignment.id}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submissionRequest),
       });
 
-      const evaluationResponse = await supabase.functions.invoke('evaluate-assignment', {
-        body: {
-          submissionId: submission.id,
-          questions: questions,
-          answers: Object.entries(answers).map(([questionId, answer]) => ({
-            questionId: parseInt(questionId),
-            answer,
-            question: questions.find(q => q.id === questionId)?.question,
-            correctAnswer: questions.find(q => q.id === questionId)?.correctAnswer,
-            options: questions.find(q => q.id === questionId)?.options
-          }))
-        }
-      });
-
-      if (evaluationResponse.error) {
-        console.error('Evaluation error:', evaluationResponse.error);
-        // Continue with basic scoring if AI evaluation fails
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Evaluation failed." }));
+        throw new Error(errorData.detail);
       }
 
-      const evaluationData = evaluationResponse.data || {};
-      const finalScore = evaluationData.totalScore || 0;
-      const feedback = evaluationData.feedback || [];
+      const submissionResult = await response.json();
+      const { results: aiResults } = submissionResult;
+      const maxScore = questions.reduce((sum, q) => sum + q.points, 0);
+      const adaptedFeedback = aiResults.feedback.map((fb: any) => {
+        const question = questions.find(q => parseInt(q.id, 10) === fb.question_number);
+        return {
+          questionId: fb.question_number,
+          isCorrect: fb.correct,
+          feedback: fb.ai_feedback,
+          score: fb.correct ? (question?.points || 10) : 0,
+          maxScore: question?.points || 10,
+        };
+      });
 
-      // Update submission with AI results
-      await supabase
-        .from('assessment_submissions')
-        .update({
-          total_score: finalScore,
-          ai_feedback: feedback
-        })
-        .eq('id', submission.id);
-
-      // Show results
       setResults({
-        score: finalScore,
-        maxScore: submissionData.max_score,
-        percentage: Math.round((finalScore / submissionData.max_score) * 100),
-        timeSpent: Math.round((new Date().getTime() - timeStarted.getTime()) / 1000 / 60),
-        feedback
+        score: aiResults.score,
+        maxScore: maxScore,
+        percentage: maxScore > 0 ? Math.round((aiResults.score / maxScore) * 100) : 0,
+        timeSpent: timeStarted ? Math.round((new Date().getTime() - timeStarted.getTime()) / 1000 / 60) : 0,
+        feedback: adaptedFeedback,
+        overallFeedback: aiResults.summary,
       });
       
       setIsCompleted(true);
-
-      toast({
-        title: "Assessment Complete!",
-        description: "Your results have been generated with AI feedback.",
-      });
+      toast({ title: "Assessment Complete!", description: "Your results have been generated." });
 
     } catch (error: any) {
-      toast({
-        title: "Submission Failed",
-        description: error.message || "Failed to submit assessment",
-        variant: "destructive"
-      });
+      toast({ title: "Submission Failed", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!assignment) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p>Loading assignment...</p>
-        </div>
-      </div>
-    );
+  const currentQuestion = questions[currentQuestionIndex];
+  const isLastQuestion = currentQuestionIndex === questions.length - 1;
+  const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
+
+  if (isLoading || !assignment) {
+    return <div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>;
   }
 
   if (isCompleted && results) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background/50 to-primary/5 flex items-center justify-center px-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-2xl w-full"
-        >
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="max-w-2xl w-full">
           <Card className="p-8 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-8 h-8 text-white" />
-            </div>
-            
+            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
             <h1 className="text-3xl font-bold mb-4">Assessment Complete!</h1>
-            <p className="text-muted-foreground mb-8">
-              Great job completing "{assignment.title}". Here are your results:
-            </p>
-
+            <p className="text-gray-600 mb-8">Great job, {learnerName}! Here are your results for "{assignment.title}".</p>
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <p className="text-2xl font-bold text-primary">{results.percentage}%</p>
-                <p className="text-sm text-muted-foreground">Final Score</p>
-              </div>
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <p className="text-2xl font-bold">{results.score}/{results.maxScore}</p>
-                <p className="text-sm text-muted-foreground">Points Earned</p>
-              </div>
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <p className="text-2xl font-bold">{results.timeSpent}m</p>
-                <p className="text-sm text-muted-foreground">Time Spent</p>
-              </div>
+              <div className="p-4 bg-gray-100 rounded-lg"><p className="text-2xl font-bold text-primary">{results.percentage}%</p><p className="text-sm text-gray-500">Final Score</p></div>
+              <div className="p-4 bg-gray-100 rounded-lg"><p className="text-2xl font-bold">{results.score}/{results.maxScore}</p><p className="text-sm text-gray-500">Points Earned</p></div>
+              <div className="p-4 bg-gray-100 rounded-lg"><p className="text-2xl font-bold">{results.timeSpent}m</p><p className="text-sm text-gray-500">Time Spent</p></div>
             </div>
-
-            <div className="space-y-4 mb-8">
-              {results.feedback && results.feedback.length > 0 ? (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Detailed Feedback</h3>
-                  {results.feedback.map((feedback: any, index: number) => (
-                    <div key={index} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">Question {feedback.questionId}</span>
-                        <Badge variant={feedback.isCorrect ? "default" : "secondary"}>
-                          {feedback.score}/{feedback.maxScore} points
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">{feedback.feedback}</p>
-                      {feedback.suggestions && (
-                        <p className="text-sm text-blue-600">{feedback.suggestions}</p>
-                      )}
-                    </div>
-                  ))}
-                  {results.overallFeedback && (
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="font-medium text-blue-900 mb-2">Overall Feedback</p>
-                      <p className="text-sm text-blue-700">{results.overallFeedback}</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-left">
-                  <div className="flex items-start space-x-3">
-                    <Brain className="w-5 h-5 text-blue-600 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-blue-900">AI Evaluation in Progress</p>
-                      <p className="text-sm text-blue-700">
-                        Your detailed feedback and personalized insights will be available shortly. 
-                        The AI is analyzing your responses to provide constructive feedback.
-                      </p>
-                    </div>
+            <div className="space-y-4 text-left">
+              <h3 className="text-lg font-semibold">Detailed Feedback</h3>
+              {results.feedback.map((fb: any) => (
+                <div key={fb.questionId} className="p-4 border rounded-lg">
+                  <div className="flex justify-between mb-2">
+                    <span className="font-medium">Question {fb.questionId}</span>
+                    <Badge variant={fb.isCorrect ? 'default' : 'destructive'}>{fb.score}/{fb.maxScore} pts</Badge>
                   </div>
+                  <p className="text-sm text-gray-600">{fb.feedback}</p>
+                </div>
+              ))}
+              {results.overallFeedback && (
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <p className="font-medium text-blue-800">Overall Feedback</p>
+                  <p className="text-sm text-blue-700">{results.overallFeedback}</p>
                 </div>
               )}
             </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button onClick={() => navigate('/')} className="px-8">
-                Return Home
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/auth')} className="px-8">
-                Create Account to Track Progress
-              </Button>
-            </div>
+            <Button onClick={() => navigate('/')} className="mt-8 w-full">Return Home</Button>
           </Card>
         </motion.div>
       </div>
@@ -305,225 +195,71 @@ const TakeAssignment = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/50 to-primary/5">
-      {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-primary to-primary/70 rounded-lg flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-primary-foreground" />
+    <div className="min-h-screen bg-gray-50">
+      <header className="border-b bg-white"><div className="container mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center space-x-2"><Brain className="w-6 h-6 text-primary" /> <span className="text-xl font-bold">Assess AI Wizard</span></div>
+        <Badge variant="outline">{isStarted ? `In Progress - ${learnerName}` : "Ready to Start"}</Badge>
+      </div></header>
+
+      <main className="container mx-auto px-6 py-8">
+        {!isStarted ? (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+            <Card className="max-w-2xl mx-auto p-8">
+              <h1 className="text-3xl font-bold mb-2">{assignment.title}</h1>
+              <p className="text-gray-600 mb-6">{assignment.description}</p>
+              <div className="space-y-4 max-w-sm mx-auto">
+                <Label htmlFor="learnerName">Please enter your name to begin</Label>
+                <div className="flex gap-2">
+                  <Input id="learnerName" value={learnerName} onChange={(e) => setLearnerName(e.target.value)} placeholder="Your Name" />
+                  <Button onClick={handleStartAssignment} disabled={!learnerName.trim()}>Start Assignment</Button>
                 </div>
-                <span className="text-xl font-bold">EduGenius AI</span>
               </div>
-              <Badge variant="secondary">Assessment</Badge>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span>In Progress</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-6 py-8">
-        {/* Assignment Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8"
-        >
-          <Card className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">{assignment.title}</h1>
-                {assignment.description && (
-                  <p className="text-muted-foreground">{assignment.description}</p>
-                )}
-              </div>
-              <Badge variant="outline">
-                {questions.length} Questions
-              </Badge>
-            </div>
-            
-            {/* Progress */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Progress: Question {currentQuestionIndex + 1} of {questions.length}</span>
-                <span>{Math.round(progress)}%</span>
-              </div>
+            </Card>
+          </motion.div>
+        ) : (
+          <>
+            <Card className="p-6 mb-8">
+              <div className="flex justify-between text-sm mb-2"><span>Progress</span><span>{Math.round(progress)}%</span></div>
               <Progress value={progress} />
-            </div>
-          </Card>
-        </motion.div>
-
-        {/* Name Input (if not provided) */}
-        {!learnerName && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mb-8"
-          >
-            <Card className="p-6">
-              <div className="max-w-md">
-                <Label htmlFor="learnerName" className="text-lg font-semibold">
-                  Enter Your Name
-                </Label>
-                <p className="text-muted-foreground mb-4">
-                  Please provide your name to track your progress
-                </p>
-                <Input
-                  id="learnerName"
-                  value={learnerName}
-                  onChange={(e) => setLearnerName(e.target.value)}
-                  placeholder="Your full name"
-                  className="text-lg"
-                />
-              </div>
             </Card>
-          </motion.div>
-        )}
 
-        {/* Question */}
-        {learnerName && (
-          <motion.div
-            key={currentQuestionIndex}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Card className="p-8">
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <Badge variant="outline">
-                    Question {currentQuestionIndex + 1}
-                  </Badge>
-                  <Badge>
-                    {currentQuestion.points} points
-                  </Badge>
+            <motion.div key={currentQuestionIndex} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
+              <Card className="p-8">
+                <div className="flex justify-between mb-4">
+                  <Badge variant="secondary">Question {currentQuestionIndex + 1} of {questions.length}</Badge>
+                  <Badge>{currentQuestion.points} points</Badge>
                 </div>
-                
-                <h2 className="text-2xl font-semibold mb-4">
-                  {currentQuestion.question}
-                </h2>
-              </div>
-
-              {/* Answer Input */}
-              <div className="space-y-4 mb-8">
-                {currentQuestion.type === 'multiple_choice' && (
-                  <RadioGroup
-                    value={answers[currentQuestion.id] || ''}
-                    onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
-                  >
-                    {currentQuestion.options?.map((option, index) => (
-                      <div key={index} className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/30 transition-colors">
-                        <RadioGroupItem value={option} id={`option-${index}`} />
-                        <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
-                          {option}
+                <h2 className="text-2xl font-semibold mb-6">{currentQuestion.question}</h2>
+                <div className="space-y-4 mb-8">
+                  {currentQuestion.type === 'multiple_choice' && (
+                    <RadioGroup value={answers[currentQuestion.id] || ''} onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}>
+                      {currentQuestion.options?.map((option, index) => (
+                        <Label key={index} className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-100 cursor-pointer">
+                          <RadioGroupItem value={option} id={`option-${index}`} />
+                          <span>{option}</span>
                         </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )}
-
-                {currentQuestion.type === 'short_answer' && (
-                  <Input
-                    value={answers[currentQuestion.id] || ''}
-                    onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
-                    placeholder="Enter your answer..."
-                    className="text-lg p-4"
-                  />
-                )}
-
-                {currentQuestion.type === 'essay' && (
-                  <Textarea
-                    value={answers[currentQuestion.id] || ''}
-                    onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
-                    placeholder="Write your essay response..."
-                    rows={8}
-                    className="text-lg p-4"
-                  />
-                )}
-              </div>
-
-              {/* Navigation */}
-              <div className="flex items-center justify-between">
-                <Button
-                  variant="outline"
-                  onClick={previousQuestion}
-                  disabled={currentQuestionIndex === 0}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Previous
-                </Button>
-
-                {isLastQuestion ? (
-                  <Button
-                    onClick={submitAssignment}
-                    disabled={isSubmitting}
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 mr-2" />
-                        Submit Assessment
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <Button onClick={nextQuestion}>
-                    Next
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                )}
-              </div>
-            </Card>
-          </motion.div>
+                      ))}
+                    </RadioGroup>
+                  )}
+                  {(currentQuestion.type === 'short_answer' || currentQuestion.type === 'essay') && (
+                    <Textarea value={answers[currentQuestion.id] || ''} onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)} placeholder="Your answer..." rows={currentQuestion.type === 'essay' ? 8 : 3} />
+                  )}
+                </div>
+                <div className="flex justify-between items-center">
+                  <Button variant="outline" onClick={previousQuestion} disabled={currentQuestionIndex === 0}>Previous</Button>
+                  {isLastQuestion ? (
+                    <Button onClick={submitAssignment} disabled={isSubmitting}>
+                      {isSubmitting ? 'Submitting...' : 'Submit Assessment'}
+                    </Button>
+                  ) : (
+                    <Button onClick={nextQuestion}>Next Question</Button>
+                  )}
+                </div>
+              </Card>
+            </motion.div>
+          </>
         )}
-
-        {/* Answer Status */}
-        {learnerName && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-8"
-          >
-            <Card className="p-6">
-              <h3 className="font-semibold mb-4">Question Status</h3>
-              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
-                {questions.map((question, index) => (
-                  <button
-                    key={question.id}
-                    onClick={() => setCurrentQuestionIndex(index)}
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-medium transition-colors ${
-                      index === currentQuestionIndex
-                        ? 'bg-primary text-primary-foreground'
-                        : answers[question.id]
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-muted hover:bg-muted/70'
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
-            </Card>
-          </motion.div>
-        )}
-      </div>
+      </main>
     </div>
   );
 };

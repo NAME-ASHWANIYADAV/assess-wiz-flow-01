@@ -10,6 +10,7 @@ import TakeAssignment from './pages/TakeAssignment';
 import Assessment from './pages/Assessment';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
+import AssignmentAnalytics from './pages/AssignmentAnalytics';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/class/:classId" element={<ClassDetail />} />
           <Route path="/assignment/:shareLink" element={<TakeAssignment />} />
           <Route path="/assignment/:shareLink/results" element={<TakeAssignment />} />
+          <Route path="/assignment/:assignmentId/analytics" element={<AssignmentAnalytics />} />
           <Route path="/join/:inviteLink" element={<Dashboard />} />
           <Route path="/assessment" element={<Assessment />} />
           <Route path="/profile" element={<Profile />} />

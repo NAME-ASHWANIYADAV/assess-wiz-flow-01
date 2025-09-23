@@ -1,7 +1,8 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+// The URL for your deployed FastAPI backend.
+// It's recommended to set this as an environment variable in your Supabase project settings.
+const FASTAPI_BACKEND_URL = Deno.env.get('FASTAPI_BACKEND_URL') || 'https://natwest-backend.onrender.com';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,112 +16,71 @@ serve(async (req) => {
   }
 
   try {
-    const { submissionId, questions, answers } = await req.json();
+    // The request from the frontend should contain the quiz_id (as submissionId) and the user's answers.
+    const { submissionId, answers } = await req.json();
+    const quiz_id = submissionId;
 
-    if (!answers || !Array.isArray(answers)) {
-      throw new Error('Answers are required');
+    // Get the Authorization header from the incoming request to forward it to the backend.
+    const authHeader = req.headers.get('Authorization');
+
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Authorization header is required' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log('Evaluating submission:', submissionId, 'with', answers.length, 'answers');
+    if (!quiz_id || !answers || !Array.isArray(answers)) {
+        return new Response(JSON.stringify({ error: 'submissionId and a valid answers array are required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
 
-    // Create evaluation prompt
-    const evaluationPrompt = `You are an expert educational evaluator. Please evaluate the following student responses and provide detailed feedback.
+    // Transform the answers array to match the FastAPI backend's UserAnswer model.
+    // FastAPI expects: { question_number: int, answer: str, confidence: Optional[str] }
+    // Frontend sends: { questionId: any, answer: any, confidence: any, ... }
+    const user_answers_for_fastapi = answers.map(a => ({
+      question_number: parseInt(a.questionId, 10), // Ensure question_number is an integer
+      answer: a.answer,
+      confidence: a.confidence // Forwarding confidence if available
+    }));
 
-    Questions and Answers:
-    ${answers.map((item, index) => `
-    Question ${index + 1}: ${item.question}
-    ${item.options ? `Options: ${item.options.join(', ')}` : ''}
-    ${item.correctAnswer ? `Correct Answer: ${item.correctAnswer}` : ''}
-    Student Answer: ${item.answer || 'No answer provided'}
-    `).join('\n')}
-
-    Please provide:
-    1. A score for each question (0 to full points)
-    2. Detailed feedback for each answer explaining what was correct/incorrect
-    3. Constructive suggestions for improvement
-    4. Overall performance summary
-
-    Return the response as JSON with this exact structure:
-    {
-      "totalScore": number,
-      "feedback": [
-        {
-          "questionId": number,
-          "score": number,
-          "maxScore": number,
-          "feedback": "Detailed feedback text",
-          "isCorrect": boolean,
-          "suggestions": "Improvement suggestions"
-        }
-      ],
-      "overallFeedback": "Overall performance summary and encouragement"
-    }`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call the FastAPI backend's /quizzes/{quiz_id}/submit endpoint
+    const fastapiResponse = await fetch(`${FASTAPI_BACKEND_URL}/quizzes/${quiz_id}/submit`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
+        // Forward the user's authorization token to the FastAPI backend for authentication
+        'Authorization': authHeader,
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are a helpful and encouraging educational evaluator. Provide constructive feedback that helps students learn. Always respond with valid JSON only.' 
-          },
-          { role: 'user', content: evaluationPrompt }
-        ],
-        max_tokens: 2000,
-        temperature: 0.3,
-      }),
+      body: JSON.stringify(user_answers_for_fastapi),
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'Failed to evaluate responses');
+    // Handle errors from the FastAPI backend
+    if (!fastapiResponse.ok) {
+      const errorBody = await fastapiResponse.text();
+      console.error('FastAPI backend returned an error:', fastapiResponse.status, errorBody);
+      let errorDetail;
+      try {
+        // FastAPI often returns error details in a 'detail' key
+        errorDetail = JSON.parse(errorBody).detail;
+      } catch {
+        errorDetail = errorBody;
+      }
+      throw new Error(errorDetail || 'Failed to evaluate submission via FastAPI backend');
     }
 
-    const data = await response.json();
-    const evaluationContent = data.choices[0].message.content;
+    // Get the successful evaluation result from the FastAPI backend
+    const evaluationResult = await fastapiResponse.json();
 
-    console.log('AI evaluation response:', evaluationContent);
-
-    // Parse the JSON response
-    let evaluation;
-    try {
-      evaluation = JSON.parse(evaluationContent);
-    } catch (parseError) {
-      console.error('Failed to parse evaluation JSON:', parseError);
-      console.error('Raw content:', evaluationContent);
-      
-      // Fallback evaluation
-      evaluation = {
-        totalScore: Math.floor(answers.length * 0.7 * 10), // Basic scoring
-        feedback: answers.map((item, index) => ({
-          questionId: parseInt(item.questionId),
-          score: item.answer ? 7 : 0,
-          maxScore: 10,
-          feedback: item.answer ? "Good effort on this question!" : "No answer was provided.",
-          isCorrect: !!item.answer,
-          suggestions: "Keep practicing and review the material."
-        })),
-        overallFeedback: "Thank you for completing the assignment. Keep up the good work!"
-      };
-    }
-
-    // Validate and ensure structure
-    evaluation.totalScore = evaluation.totalScore || 0;
-    evaluation.feedback = evaluation.feedback || [];
-    evaluation.overallFeedback = evaluation.overallFeedback || "Assignment evaluated successfully.";
-
-    console.log('Final evaluation:', evaluation);
-
-    return new Response(JSON.stringify(evaluation), {
+    // Forward the result from the FastAPI backend to the frontend
+    return new Response(JSON.stringify(evaluationResult), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
-    console.error('Error in evaluate-assignment function:', error);
+    console.error('Error in evaluate-assignment function:', error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

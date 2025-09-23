@@ -469,7 +469,7 @@ const CreatorStudio = () => {
                             <Eye className="w-4 h-4 mr-1" />
                             Preview
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => navigate(`/assignment/${assignment.id}/analytics`)}>
                             <BarChart3 className="w-4 h-4 mr-1" />
                             Analytics
                           </Button>
