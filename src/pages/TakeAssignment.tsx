@@ -148,6 +148,18 @@ const TakeAssignment = () => {
     }
   };
 
+  const nextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+
+  const previousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
   const currentQuestion = questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
@@ -231,9 +243,9 @@ const TakeAssignment = () => {
                 </div>
                 <h2 className="text-2xl font-semibold mb-6">{currentQuestion.question}</h2>
                 <div className="space-y-4 mb-8">
-                  {currentQuestion.type === 'multiple_choice' && (
+                  {(currentQuestion.type === 'multiple_choice' || currentQuestion.type === 'true_false') && (
                     <RadioGroup value={answers[currentQuestion.id] || ''} onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}>
-                      {currentQuestion.options?.map((option, index) => (
+                      {(currentQuestion.type === 'true_false' ? ['True', 'False'] : currentQuestion.options)?.map((option, index) => (
                         <Label key={index} className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-100 cursor-pointer">
                           <RadioGroupItem value={option} id={`option-${index}`} />
                           <span>{option}</span>

@@ -46,7 +46,7 @@ const CreatorStudio = () => {
       return;
     }
 
-    setUser(session.user);
+    setUser(session.user)
     
     // Fetch profile
     const { data: profileData } = await supabase
@@ -121,6 +121,7 @@ const CreatorStudio = () => {
 
         const quizData = await response.json();
         questions = quizData.questions;
+        console.log("Generated questions:", questions);
       } else if (assignmentForm.contentType === 'file' && assignmentForm.fileContent) {
         const formData = new FormData();
         formData.append('file', assignmentForm.fileContent);
@@ -140,6 +141,7 @@ const CreatorStudio = () => {
 
         const quizData = await response.json();
         questions = quizData.questions;
+        console.log("Generated questions from file:", questions);
       }
 
       const shareLink = generateShareLink();

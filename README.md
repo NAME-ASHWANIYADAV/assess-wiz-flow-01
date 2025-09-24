@@ -1,73 +1,38 @@
-# Welcome to your EduGenius AI project
+# Edugenius
 
-## Project info
+## 📄 Summary of Your Solution
 
-**URL**: https://www.edugeniusai.com/
+Our project, **Edugenius**, tackles the problem of **creating and grading educational assessments efficiently and without bias**. It works by **leveraging AI to automatically generate question papers from a given text or topic and then objectively grade student answers, providing detailed feedback**. We built our solution using **[list key technologies, e.g., React for the frontend, Python with Flask for the backend API, and a machine learning model for text processing]**.
 
-## How can I edit this code?
+*(Note: Please update the "list key technologies" part to be specific to your project.)*
 
-There are several ways of editing your application.
+## 👥 Team Information
 
-**Use EduGenius AI**
+| Field | Details |
+| :--- | :--- |
+| **Team Name** | CodeWarrior |
+| **Title** | Edugenius |
+| **Theme** | AI-Powered Assessment Tool |
+| **Contact Email** | ashwaniyadav_23me077@dtu.ac.in |
+| **Participants**| Ashwani, Saksham Jain, Saksham Chhabra, Vedant, Priyanshu |
+| **GitHub Usernames**| @NAME-ASHWANIYADAV, [add other GitHub usernames here] |
 
-Simply visit the [EduGenius AI Project](https://www.edugeniusai.com/) and start prompting.
+## 🎥 Submission Video
 
-Changes made via EduGenius AI will be committed automatically to this repo.
+Here is a short video walkthrough of our project, demonstrating its key features and impact.
 
-**Use your preferred IDE**
+📹 **Video Link:** [https://drive.google.com/drive/folders/1-FJZ8E4hxzc7dfx-4YU2uwnWLko5qXom?usp=sharing](https://drive.google.com/drive/folders/1-FJZ8E4hxzc7dfx-4YU2uwnWLko5qXom?usp=sharing)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in EduGenius AI.
+## 🌐 Hosted App / Solution URL
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+You can access our live deployed application at the link below.
 
-Follow these steps:
+🌍 **Deployed URL:** [https://edugenius1.vercel.app/](https://edugenius1.vercel.app/)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## License
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Copyright 2025 FINOS
 
-# Step 3: Install the necessary dependencies.
-npm i
+Distributed under the Apache License, Version 2.0.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [EduGenius AI](https://www.edugeniusai.com/) and click on Share -> Publish.
-
-## Can I connect a custom domain to my EduGenius AI project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.edugeniusai.com/features/custom-domain#custom-domain)
+SPDX-License-Identifier: Apache-2.0
